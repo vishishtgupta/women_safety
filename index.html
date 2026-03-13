@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>SheSecure – AI Women Safety</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:rgba(255,255,255,.08);
+  --red:#ff3c64;--green:#00e5a0;--blue:#4d9fff;--yellow:#ffb830;--purple:#a855f7;
+  --text:#f0f0f8;--muted:rgba(240,240,248,.45);--r:16px;
+  --font:'Sora',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100dvh;width:100vw;overflow:hidden;font-family:var(--font);background:var(--bg);color:var(--text)}
+.app{display:flex;height:100dvh;width:100vw}
+
+/* ── Sidebar ── */
+.sidebar{width:340px;min-width:340px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;overflow:hidden}
+.sb-head{padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--red),#c0392b);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 15px rgba(255,60,100,.3);flex-shrink:0}
+.logo-name{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--text),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.backend-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.backend-dot.ok{background:var(--green);box-shadow:0 0 8px rgba(0,229,160,.5)}
+.backend-dot.fail{background:var(--red)}
+
+/* ── Nav ── */
+.nav{display:flex;padding:10px;gap:6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.nb{flex:1;padding:9px 6px;border-radius:10px;cursor:pointer;background:transparent;color:var(--muted);font-size:9px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:5px;border:1px solid transparent;font-family:var(--font);transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.nb:hover{background:var(--surface2);color:var(--text)}
+.nb.active{background:rgba(255,60,100,.12);color:var(--red);border-color:rgba(255,60,100,.25)}
+
+/* ── Panel ── */
+.panel{flex:1;overflow-y:auto;padding:14px}
+.panel::-webkit-scrollbar{width:4px}
+.panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── Card ── */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.ct{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+
+/* ── Inputs ── */
+.inp{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);margin-bottom:10px;outline:none;font-family:var(--font);font-size:13px;transition:border-color .2s}
+.inp:focus{border-color:rgba(77,159,255,.5)}
+.inp::placeholder{color:var(--muted)}
+.btn{width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-family:var(--font);font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;letter-spacing:.3px}
+.btn:active{transform:scale(.98)}
+.btn-r{background:var(--red);color:#fff}
+.btn-g{background:var(--green);color:#000}
+.btn-b{background:var(--blue);color:#fff}
+.btn-s{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-s:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
+
+/* ══ EVIDENCE RECORDER ══ */
+.rec-card{background:linear-gradient(135deg,rgba(168,85,247,.07),rgba(77,159,255,.05));border:1px solid rgba(168,85,247,.2);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.rec-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.rb{padding:12px 8px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-family:var(--font);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .25s;text-transform:uppercase;letter-spacing:.5px;position:relative}
+.rb .ri{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .25s}
+.rb.cam .ri{background:rgba(77,159,255,.1);border:1.5px solid rgba(77,159,255,.25);color:var(--blue)}
+.rb.mic .ri{background:rgba(168,85,247,.1);border:1.5px solid rgba(168,85,247,.25);color:var(--purple)}
+.rb.rec{animation:rpulse 1.2s ease-in-out infinite}
+.rb.rec.cam{border-color:var(--red);background:rgba(255,60,100,.07);color:var(--red)}
+.rb.rec.mic{border-color:var(--purple);background:rgba(168,85,247,.08);color:var(--purple)}
+.rb.rec .ri{animation:rscale .8s ease-in-out infinite alternate}
+.rb.rec.cam .ri{background:rgba(255,60,100,.12);border-color:rgba(255,60,100,.35);color:var(--red)}
+.rb.rec.mic .ri{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:var(--purple)}
+@keyframes rpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,60,100,.3)}50%{box-shadow:0 0 0 6px rgba(255,60,100,0)}}
+@keyframes rscale{from{transform:scale(1)}to{transform:scale(1.12)}}
+.rdot{width:7px;height:7px;border-radius:50%;background:var(--red);display:none;animation:blink 1s step-end infinite;position:absolute;top:8px;right:8px}
+.rb.rec .rdot{display:block}
+@keyframes blink{50%{opacity:0}}
+.rtmr{font-family:var(--mono);font-size:10px;color:var(--muted);display:none}
+.rb.rec .rtmr{display:block;color:var(--red)}
+
+/* Evidence Count Badge */
+.ev-count{display:flex;gap:8px;margin-bottom:10px}
+.ev-badge{flex:1;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.ev-badge.has{border-color:rgba(0,229,160,.3);color:var(--green);background:rgba(0,229,160,.05)}
+.ev-badge .num{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--green);line-height:1}
+
+/* Status bar */
+.ev-status{border-radius:10px;padding:10px 12px;border:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);min-height:42px;margin-bottom:10px}
+.ev-status.uploading{border-color:rgba(255,184,48,.3);color:var(--yellow)}
+.ev-status.ready{border-color:rgba(0,229,160,.3);color:var(--green);background:rgba(0,229,160,.04)}
+.ev-status.sending{border-color:rgba(168,85,247,.3);color:var(--purple)}
+.ev-status.sent{border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.06);color:var(--green)}
+.ev-status.failed{border-color:rgba(255,60,100,.3);color:var(--red)}
+.ev-status.recording{border-color:rgba(255,60,100,.4);color:var(--red);background:rgba(255,60,100,.04)}
+
+/* Upload progress */
+.upbar-wrap{height:3px;border-radius:2px;background:rgba(255,255,255,.07);margin-bottom:10px;overflow:hidden;display:none}
+.upbar{height:100%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:2px;width:0;transition:width .3s}
+
+/* MongoDB evidence list */
+.ev-list{max-height:120px;overflow-y:auto;margin-bottom:10px}
+.ev-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px;font-size:11px}
+.ev-item .ev-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ev-item.video .ev-icon{background:rgba(77,159,255,.12)}
+.ev-item.audio .ev-icon{background:rgba(168,85,247,.12)}
+.ev-item .ev-info{flex:1;min-width:0}
+.ev-item .ev-time{color:var(--muted);font-size:10px}
+.ev-item .del-btn{color:var(--red);cursor:pointer;font-size:13px;opacity:.5;transition:opacity .2s;background:none;border:none;padding:2px 5px}
+.ev-item .del-btn:hover{opacity:1}
+
+/* SOS button */
+.sos-wrap{display:flex;flex-direction:column;align-items:center;padding:8px 0}
+.sos-btn{width:120px;height:120px;border-radius:50%;border:3px solid var(--red);background:radial-gradient(circle,rgba(255,60,100,.14),rgba(255,60,100,.04));cursor:pointer;color:var(--red);font-weight:900;font-size:24px;font-family:var(--font);letter-spacing:2px;box-shadow:0 0 30px rgba(255,60,100,.2);transition:all .2s;position:relative}
+.sos-btn::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(255,60,100,.2);animation:pring 2s ease-out infinite}
+.sos-btn:hover{background:radial-gradient(circle,rgba(255,60,100,.28),rgba(255,60,100,.1));box-shadow:0 0 50px rgba(255,60,100,.4);transform:scale(1.04)}
+@keyframes pring{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.4);opacity:0}}
+.sos-hint{font-size:10px;color:var(--muted);margin-top:12px;text-align:center;line-height:1.6}
+.sos-hint span{color:var(--green)}
+
+/* video preview */
+#vpWrap{width:100%;border-radius:10px;overflow:hidden;margin-bottom:10px;border:1px solid var(--border);display:none;position:relative}
+#vpWrap video{width:100%;height:90px;object-fit:cover;display:block;background:#000}
+#vpWrap .live{position:absolute;top:5px;left:7px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:1px}
+#vpWrap .live::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;animation:blink 1s step-end infinite}
+#waveViz{width:100%;height:36px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:none;align-items:center;justify-content:center;gap:3px;padding:6px;margin-bottom:8px;overflow:hidden}
+.wb{width:3px;height:4px;background:var(--purple);border-radius:3px;transition:height .12s}
+
+/* AI Chat */
+.ai-row{display:flex;gap:8px}
+.ai-row .inp{margin-bottom:0;flex:1;font-size:13px}
+.ai-send{padding:12px 15px;border-radius:10px;border:none;background:var(--blue);color:#fff;cursor:pointer;font-size:16px;transition:opacity .2s;flex-shrink:0}
+.ai-send:hover{opacity:.85}
+#aiLog{max-height:150px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:7px}
+.bubble{padding:9px 13px;border-radius:12px;font-size:12px;line-height:1.5;max-width:92%}
+.bubble.user{background:rgba(77,159,255,.14);border:1px solid rgba(77,159,255,.2);color:var(--blue);align-self:flex-end}
+.bubble.ai{background:var(--surface);border:1px solid var(--border);color:var(--text);align-self:flex-start}
+.bubble.ai.alert{border-color:var(--red);color:var(--red);background:rgba(255,60,100,.07)}
+
+/* Journey stats */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{background:var(--surface);border-radius:10px;padding:12px;border:1px solid var(--border);text-align:center}
+.stat-lbl{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--green)}
+
+/* Map */
+.map-area{flex:1;position:relative}
+#map{width:100%;height:100%}
+.mo-bottom{position:absolute;bottom:18px;left:18px;right:18px;z-index:1000;pointer-events:none}
+.loc-card{background:rgba(18,18,26,.92);backdrop-filter:blur(12px);border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.mbox{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:22px;width:100%;max-width:400px;max-height:82dvh;overflow-y:auto}
+.mbox::-webkit-scrollbar{width:4px}
+.mbox::-webkit-scrollbar-thumb{background:var(--border)}
+.mtitle{font-size:17px;font-weight:700;margin-bottom:16px}
+.sri{padding:11px 14px;border-radius:10px;cursor:pointer;border-bottom:1px solid var(--border);color:var(--text);font-size:13px;transition:background .15s}
+.sri:hover{background:rgba(255,255,255,.04)}
+.sri:last-child{border-bottom:none}
+
+/* Setup modal */
+#setupModal .mbox{border:2px solid var(--purple);max-width:440px}
+.setup-step{display:flex;gap:11px;align-items:flex-start;padding:11px;border-radius:10px;background:var(--surface);border:1px solid var(--border);margin-bottom:9px}
+.snum{width:26px;height:26px;border-radius:50%;background:var(--purple);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stxt{font-size:12px;color:var(--muted);line-height:1.65}
+.stxt b{color:var(--text)} .stxt a{color:var(--blue);text-decoration:none}
+.sinp{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;margin-bottom:9px;outline:none}
+.sinp:focus{border-color:var(--purple)}
+.tresult{padding:10px 13px;border-radius:8px;font-size:12px;margin-bottom:9px;display:none}
+.tresult.ok{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.3);color:var(--green)}
+.tresult.fail{background:rgba(255,60,100,.07);border:1px solid rgba(255,60,100,.3);color:var(--red)}
+
+/* SOS overlay */
+#sosOv .mbox{border:2px solid var(--red);text-align:center;max-width:340px}
+.sos-pulse{width:56px;height:56px;border-radius:50%;background:rgba(255,60,100,.12);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:pring 1s ease-out infinite}
+
+/* Toast & Loader */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--green);padding:11px 22px;border-radius:10px;z-index:5000;color:var(--green);font-size:13px;font-weight:500;display:none;max-width:88vw;text-align:center;box-shadow:0 4px 20px rgba(0,229,160,.12)}
+#loader{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.spin{width:42px;height:42px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loaderTxt{font-size:13px;color:var(--muted);font-weight:500}
+.hidden{display:none!important}
+
+@media(max-width:768px){
+  .app{flex-direction:column-reverse}
+  .sidebar{width:100%;min-width:unset;height:58dvh;border-right:none;border-top:1px solid var(--border)}
+  .map-area{height:42dvh}
+  .sos-btn{width:100px;height:100px;font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+  <header class="sb-head">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">SheSecure</div>
+        <div style="font-size:10px;color:var(--muted)" id="backendStatus">connecting...</div>
+      </div>
+    </div>
+    <div title="Backend status" id="bdot" class="backend-dot"></div>
+  </header>
+
+  <nav class="nav">
+    <button class="nb active" onclick="switchTab('alert',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Alert
+    </button>
+    <button class="nb" onclick="switchTab('journey',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>Journey
+    </button>
+    <button class="nb" onclick="switchTab('contacts',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Vault
+    </button>
+    <button class="nb" onclick="switchTab('evidence',this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Evidence
+    </button>
+  </nav>
+
+  <!-- ══ ALERT TAB ══ -->
+  <div class="panel" id="tab-alert">
+
+    <!-- EVIDENCE RECORDER CARD -->
+    <div class="rec-card">
+      <div class="ct" style="margin-bottom:10px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        Evidence Recorder
+        <button onclick="openSetup()" style="margin-left:auto;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);color:var(--purple);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:var(--font);font-weight:700">⚙ Setup</button>
+      </div>
+
+      <div id="vpWrap"><video id="vp" autoplay muted playsinline></video><div class="live">● REC</div></div>
+      <div id="waveViz"></div>
+      <div class="upbar-wrap" id="upWrap"><div class="upbar" id="upBar"></div></div>
+
+      <div class="rec-row">
+        <button class="rb cam" id="camBtn" onclick="toggleCamera()">
+          <div class="rdot"></div>
+          <div class="ri"></div>
+          <span id="camLbl">Camera</span>
+          <span class="rtmr" id="camTmr">00:00</span>
+        </button>
+        <button class="rb mic" id="micBtn" onclick="toggleVoice()">
+          <div class="rdot"></div>
+          <div class="ri"></div>
+          <span id="micLbl">Voice</span>
+          <span class="rtmr" id="micTmr">00:00</span>
+        </button>
+      </div>
+
+      <!-- Evidence count badges -->
+      <div class="ev-count">
+        <div class="ev-badge" id="vidBadge">
+          <span></span><div><div class="num" id="vidCount">0</div><div style="font-size:9px">videos</div></div>
+        </div>
+        <div class="ev-badge" id="audBadge">
+          <span></span><div><div class="num" id="audCount">0</div><div style="font-size:9px">audios</div></div>
+        </div>
+        <div class="ev-badge" style="flex:2;cursor:pointer" onclick="switchTab('evidence',document.querySelectorAll('.nb')[3])">
+          <span></span><div><div style="font-size:10px;color:var(--muted)">Saved in</div><div style="font-size:11px;font-weight:700;color:var(--blue)">MongoDB</div></div>
+        </div>
+      </div>
+
+      <div class="ev-status" id="evSt">
+        <span>🎙</span><span id="evTxt">Tap Camera or Voice to start recording</span>
+      </div>
+
+      <!-- SOS with evidence button -->
+      <button class="btn btn-r" id="sosEvBtn" onclick="triggerSOSWithEvidence()" style="margin-bottom:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        SOS + Send All Evidence
+      </button>
+    </div>
+
+    <!-- Regular SOS -->
+    <div class="card" style="text-align:center">
+      <div class="ct" style="justify-content:center">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--red)"><circle cx="12" cy="12" r="10"/></svg>Emergency Hub
+      </div>
+      <div class="sos-wrap">
+        <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+        <p class="sos-hint">Tap to alert contacts instantly<br><span>Holds all your recorded evidence</span></p>
+      </div>
+    </div>
+
+    <!-- AI Chat -->
+    <div class="card">
+      <div class="ct">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>AI Safety Assistant
+      </div>
+      <div id="aiLog"></div>
+      <div class="ai-row">
+        <input class="inp" id="aiQ" placeholder="Say 'I feel unsafe' or ask anything..." onkeypress="if(event.key==='Enter')askAI()"/>
+        <button class="ai-send" onclick="askAI()">➤</button>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="ct">Quick Actions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn" style="background:rgba(0,229,160,.1);color:var(--green);border:1px solid rgba(0,229,160,.2);font-size:12px;padding:11px 8px" onclick="shareLocation()"> Share Location</button>
+        <button class="btn" style="background:rgba(255,184,48,.1);color:var(--yellow);border:1px solid rgba(255,184,48,.2);font-size:12px;padding:11px 8px" onclick="fakeCall()"> Fake Call</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ JOURNEY TAB ══ -->
+  <div class="panel hidden" id="tab-journey">
+    <div class="card">
+      <div class="ct"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>Safe Route Planner</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input class="inp" id="dest" placeholder="Search destination..." style="margin-bottom:0;flex:1" readonly onclick="openSearch()"/>
+        <button onclick="clearDest()" style="padding:12px 13px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:15px">✕</button>
+      </div>
+      <button class="btn btn-r" id="jBtn" onclick="findRoutes()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>Find AI Safe Routes
+      </button>
+      <div id="jActive" class="hidden" style="margin-top:12px;padding:13px;background:rgba(0,229,160,.05);border-radius:12px;border:1px solid rgba(0,229,160,.2)">
+        <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">🛡 Journey Active</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-lbl">Time</div><div class="stat-val" id="statTime">00:00</div></div>
+          <div class="stat-box"><div class="stat-lbl">Distance</div><div class="stat-val" id="statDist">0.0 km</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VAULT TAB ══ -->
+  <div class="panel hidden" id="tab-contacts">
+    <div class="card">
+      <div class="ct"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Trusted Network</div>
+      <div id="contactsList"><p style="text-align:center;padding:18px;color:var(--muted)">Loading...</p></div>
+    </div>
+    <div class="card">
+      <div class="ct">Add Contact</div>
+      <input class="inp" id="cName" placeholder="Full Name"/>
+      <input class="inp" id="cPhone" placeholder="Phone (10 digits)" type="tel"/>
+      <input class="inp" id="cRelation" placeholder="Relation (Mom, Friend...)"/>
+      <button class="btn btn-r" onclick="saveContact()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save to Vault
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ EVIDENCE TAB ══ -->
+  <div class="panel hidden" id="tab-evidence">
+    <div class="card">
+      <div class="ct" style="justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:6px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+          All Evidence (MongoDB)
+        </span>
+        <button onclick="loadEvidence()" style="background:rgba(77,159,255,.12);border:1px solid rgba(77,159,255,.25);color:var(--blue);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:10px;font-family:var(--font);font-weight:700">↻ Refresh</button>
+      </div>
+      <div id="evListFull"><p style="text-align:center;padding:18px;color:var(--muted)">Loading...</p></div>
+    </div>
+    <div class="card">
+      <div class="ct">Send All Evidence via WhatsApp</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Sends ALL evidence stored in MongoDB to your trusted contacts. Same as pressing SOS — but without the emergency alert.</p>
+      <button class="btn btn-b" onclick="sendEvidenceOnly()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send Evidence to Contacts
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAP ═══════════ -->
+<main class="map-area">
+  <div id="map"></div>
+  <div class="mo-bottom">
+    <div class="loc-card">
+      <div style="color:var(--red);flex-shrink:0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div style="overflow:hidden;flex:1">
+        <div id="locAddr" style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Locating...</div>
+        <div id="locCoords" style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px">Waiting for GPS...</div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Cloudinary Setup -->
+<div id="setupModal" class="overlay hidden" onclick="if(event.target===this)closeSetup()">
+  <div class="mbox">
+    <div class="mtitle" style="color:var(--purple)"> Cloudinary Setup <span style="font-size:12px;color:var(--muted);font-weight:400">(free · 1 min)</span></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;margin-top:-8px">Cloudinary gives your evidence a public URL that WhatsApp can open.</p>
+    <div class="setup-step"><div class="snum">1</div><div class="stxt">Go to <a href="https://cloudinary.com/users/register_free" target="_blank"><b>cloudinary.com</b></a> → free signup → Dashboard → copy your <b>Cloud name</b></div></div>
+    <div class="setup-step"><div class="snum">2</div><div class="stxt"><b>Settings → Upload → Add upload preset</b> → Signing mode = <b>Unsigned</b> → Save → copy <b>Preset name</b></div></div>
+    <div class="setup-step"><div class="snum">3</div><div class="stxt">Paste below and tap <b>Test &amp; Save</b> — done forever!</div></div>
+    <input class="sinp" id="sCloud" placeholder="Cloud name   e.g. abc123xyz" autocomplete="off"/>
+    <input class="sinp" id="sPreset" placeholder="Upload preset  e.g. ml_default" autocomplete="off"/>
+    <div class="tresult" id="tRes"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-s" onclick="closeSetup()">Cancel</button>
+      <button class="btn" id="testBtn" style="background:var(--purple);color:#fff;flex:1" onclick="testCloudinary()">▶ Test &amp; Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Search -->
+<div id="searchModal" class="overlay hidden" onclick="if(event.target===this)closeSearch()">
+  <div class="mbox">
+    <div class="mtitle">🔍 Search Destination</div>
+    <input class="inp" id="searchInp" placeholder="Enter place, city, landmark..." onkeypress="if(event.key==='Enter')execSearch()"/>
+    <div id="searchRes" style="margin-bottom:14px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"></div>
+    <div style="display:flex;gap:10px"><button class="btn btn-s" onclick="closeSearch()">Cancel</button><button class="btn btn-b" onclick="execSearch()">Search</button></div>
+  </div>
+</div>
+
+<!-- Route -->
+<div id="routeModal" class="overlay hidden">
+  <div class="mbox">
+    <div class="mtitle" style="color:var(--blue)">🛡 AI Route Analysis</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;margin-top:-10px">Select the safest route</p>
+    <div id="routeOpts"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-s" onclick="document.getElementById('routeModal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-g" onclick="startJourney()">▶ Start Journey</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOS Overlay -->
+<div id="sosOv" class="overlay hidden">
+  <div class="mbox">
+    <div class="sos-pulse">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h2 style="color:var(--red);font-size:18px;margin-bottom:8px">EMERGENCY ACTIVE</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px" id="sosMsg">Fetching evidence from MongoDB...</p>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:18px" id="sosDetail"></p>
+    <button class="btn btn-s" onclick="document.getElementById('sosOv').classList.add('hidden')">Dismiss</button>
+  </div>
+</div>
+
+<!-- Loader -->
+<div id="loader" class="hidden"><div class="spin"></div><div id="loaderTxt">Working...</div></div>
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const API = `http://${location.hostname}:8000`;
+const CTR = [26.9124, 75.7873]; // Jaipur
+
+// FIX: Wrap ALL localStorage access in try/catch to fix
+//      "Tracking Prevention blocked access to storage" error (Safari/Edge ITP)
+function lsGet(k, def='') {
+  try { return localStorage.getItem(k) || def; } catch { return def; }
+}
+function lsSet(k, v) {
+  try { localStorage.setItem(k, v); } catch {}
+}
+
+let CLOUD  = lsGet('ss_cloud');
+let PRESET = lsGet('ss_preset');
+
+// ── State ──────────────────────────────────────────────────
+let map, mkr, pos = [...CTR], addrDone = false;
+let jActive=false, destCoords=null, destMkr=null;
+let rLayers=[], routes=[], rEvals=[], selR=0;
+let jTimer, jStart;
+let audioCtx, analyser, waveAF;
+let camStream, camRec, camChunks=[], camOn=false, camTI, camSec=0;
+let micStream, micRec, micChunks=[], micOn=false, micTI, micSec=0;
+
+// ── Search result store (avoids inline JS with apostrophes) ──
+// FIX: Store search results in an array instead of embedding
+//      place names directly in onclick attributes.
+//      This was causing "missing ) after argument list" SyntaxError
+//      when place names contained apostrophes (e.g. "St. Mary's Church")
+let _searchResults = [];
+
+// ════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initMap(); initGPS(); buildWave();
+  renderContacts(); checkBackend();
+  if (!CLOUD || !PRESET) setTimeout(()=>showToast('⚙️ Tap Setup in Evidence Recorder to enable cloud uploads'),2000);
+});
+
+// ── Backend health ──────────────────────────────────────────
+async function checkBackend() {
+  try {
+    const r = await fetch(`${API}/`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      document.getElementById('bdot').className='backend-dot ok';
+      document.getElementById('backendStatus').textContent='backend online';
+      loadEvidence();
+      return;
+    }
+  } catch {}
+  document.getElementById('bdot').className='backend-dot fail';
+  document.getElementById('backendStatus').textContent='backend offline';
+  showToast(' Backend offline — start: python main.py', 5000);
+}
+
+// ════════════════════════════════════════════════════════════
+//  MAP & GPS
+// ════════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map',{zoomControl:false}).setView(CTR,14);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+  mkr = L.marker(CTR,{icon:L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:#ff3c64;border:3px solid #fff;box-shadow:0 0 12px rgba(255,60,100,.8)"></div>`}),zIndexOffset:1000}).addTo(map);
+  map.on('click',e=>{
+    if(!document.getElementById('tab-journey').classList.contains('hidden')&&!jActive){
+      setDest(e.latlng,'Custom Location');
+      revGeo(e.latlng.lat,e.latlng.lng,n=>{const el=document.getElementById('dest');if(el)el.value=n;});
+    }
+  });
+  setTimeout(()=>map.invalidateSize(),500);
+}
+
+function initGPS() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(p=>{
+    pos=[p.coords.latitude,p.coords.longitude];
+    mkr.setLatLng(pos); if(!jActive) map.panTo(pos);
+    const lc=document.getElementById('locCoords'); if(lc) lc.innerText=`${p.coords.latitude.toFixed(4)}N  ${p.coords.longitude.toFixed(4)}E`;
+    if(!addrDone){addrDone=true;revGeo(p.coords.latitude,p.coords.longitude,n=>{const el=document.getElementById('locAddr');if(el)el.innerText=n;});}
+    fetch(`${API}/location`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({latitude:p.coords.latitude,longitude:p.coords.longitude})}).catch(()=>{});
+  },()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+
+function revGeo(lat,lng,cb){
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+    .then(r=>r.json()).then(d=>cb(d.display_name.split(', ').slice(0,3).join(', '))).catch(()=>{});
+}
+
+// ════════════════════════════════════════════════════════════
+//  CLOUDINARY SETUP
+// ════════════════════════════════════════════════════════════
+function openSetup(){
+  document.getElementById('sCloud').value=CLOUD;
+  document.getElementById('sPreset').value=PRESET;
+  document.getElementById('tRes').style.display='none';
+  document.getElementById('setupModal').classList.remove('hidden');
+}
+function closeSetup(){ document.getElementById('setupModal').classList.add('hidden'); }
+
+async function testCloudinary(){
+  const cloud=document.getElementById('sCloud').value.trim();
+  const preset=document.getElementById('sPreset').value.trim();
+  if(!cloud||!preset){showTR('fail','Enter both values.');return;}
+  document.getElementById('testBtn').textContent='⏳ Testing...';
+  document.getElementById('testBtn').disabled=true;
+  try{
+    const tiny=new Blob([new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,2,0,0,0,144,119,83,222,0,0,0,12,73,68,65,84,8,215,99,248,207,192,0,0,0,2,0,1,226,33,188,51,0,0,0,0,73,69,78,68,174,66,96,130])],{type:'image/png'});
+    const fd=new FormData(); fd.append('file',tiny,'t.png'); fd.append('upload_preset',preset);
+    const r=await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`,{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.secure_url){
+      CLOUD=cloud; PRESET=preset; lsSet('ss_cloud',CLOUD); lsSet('ss_preset',PRESET);
+      showTR('ok',' Connected! Cloudinary is working perfectly.');
+      setTimeout(closeSetup,1800);
+    } else { showTR('fail',' '+(d.error?.message||'Check preset is Unsigned.')); }
+  }catch(e){ showTR('fail',' Network error: '+e.message); }
+  document.getElementById('testBtn').textContent='▶ Test & Save';
+  document.getElementById('testBtn').disabled=false;
+}
+function showTR(t,m){const el=document.getElementById('tRes');el.className='tresult '+t;el.textContent=m;el.style.display='block';}
+
+// ════════════════════════════════════════════════════════════
+//  CAMERA RECORDING
+// ════════════════════════════════════════════════════════════
+async function toggleCamera(){ camOn ? stopCamera() : await startCamera(); }
+
+async function startCamera(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    const w=document.getElementById('vpWrap'),v=document.getElementById('vp');
+    if(w&&v){v.srcObject=camStream;w.style.display='block';}
+    const mime=bestMime('video');
+    camRec=new MediaRecorder(camStream,mime?{mimeType:mime}:{});
+    camChunks=[];
+    camRec.ondataavailable=e=>{if(e.data?.size>0)camChunks.push(e.data);};
+    camRec.onstop=async()=>{
+      const blob=new Blob(camChunks,{type:mime||'video/webm'});
+      const ext=(mime||'').includes('mp4')?'mp4':'webm';
+      const name=`video-${Date.now()}.${ext}`;
+      const w2=document.getElementById('vpWrap'),v2=document.getElementById('vp');
+      if(v2)v2.srcObject=null; if(w2)w2.style.display='none';
+      setEv('uploading',' Uploading video to Cloudinary...');
+      const url=await uploadToCloudinary(blob,name,'video');
+      if(url){
+        await saveToMongo(url,'video',blob.size);
+        loadEvidence();
+        showToast(' Video saved to MongoDB — will be sent in SOS!');
+        setEv('ready',' Video saved — SOS will send this to contacts');
+      } else { setEv('failed',' Upload failed — check ⚙ Setup'); }
+    };
+    camRec.start(1000); camOn=true; camBtnUI(true); camSec=0;
+    camTI=setInterval(()=>{camSec++;setTmr('camTmr',camSec);},1000);
+    setEv('recording','🎥 Recording — tap Stop when done');
+    showToast('📹 Camera recording started');
+  }catch(e){ showToast(' '+(e.name==='NotAllowedError'?'Camera permission denied':e.message)); }
+}
+
+function stopCamera(){
+  if(camRec?.state!=='inactive')camRec.stop();
+  camStream?.getTracks().forEach(t=>t.stop()); camStream=null;
+  camOn=false; clearInterval(camTI); camBtnUI(false);
+  showToast(` Stopped (${fmt(camSec)}) — uploading...`);
+}
+function camBtnUI(r){
+  const b=document.getElementById('camBtn'),l=document.getElementById('camLbl'),t=document.getElementById('camTmr');
+  if(b) r?b.classList.add('rec'):b.classList.remove('rec');
+  if(l)l.textContent=r?'Stop':'Camera'; if(!r&&t)t.textContent='00:00';
+}
+
+// ════════════════════════════════════════════════════════════
+//  VOICE RECORDING
+// ════════════════════════════════════════════════════════════
+function buildWave(){ const v=document.getElementById('waveViz');if(!v)return;v.innerHTML='';for(let i=0;i<28;i++){const b=document.createElement('div');b.className='wb';b.id=`wb${i}`;v.appendChild(b);} }
+
+async function toggleVoice(){ micOn ? stopVoice() : await startVoice(); }
+
+async function startVoice(){
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    analyser=audioCtx.createAnalyser(); analyser.fftSize=64;
+    audioCtx.createMediaStreamSource(micStream).connect(analyser);
+    animWave(); const wv=document.getElementById('waveViz');if(wv)wv.style.display='flex';
+    const mime=bestMime('audio');
+    micRec=new MediaRecorder(micStream,mime?{mimeType:mime}:{});
+    micChunks=[];
+    micRec.ondataavailable=e=>{if(e.data?.size>0)micChunks.push(e.data);};
+    micRec.onstop=async()=>{
+      const blob=new Blob(micChunks,{type:mime||'audio/webm'});
+      const ext=(mime||'').includes('ogg')?'ogg':(mime||'').includes('mp4')?'m4a':'webm';
+      const name=`audio-${Date.now()}.${ext}`;
+      const wv2=document.getElementById('waveViz');if(wv2)wv2.style.display='none'; stopWave();
+      setEv('uploading',' Uploading audio to Cloudinary...');
+      const url=await uploadToCloudinary(blob,name,'audio');
+      if(url){
+        await saveToMongo(url,'audio',blob.size);
+        loadEvidence();
+        showToast(' Audio saved to MongoDB — will be sent in SOS!');
+        setEv('ready',' Audio saved — SOS will send this to contacts');
+      } else { setEv('failed',' Upload failed — check ⚙ Setup'); }
+    };
+    micRec.start(1000); micOn=true; micBtnUI(true); micSec=0;
+    micTI=setInterval(()=>{micSec++;setTmr('micTmr',micSec);},1000);
+    setEv('recording','🎙 Recording — tap Stop when done');
+    showToast('🎙 Voice recording started');
+  }catch(e){ showToast(' '+(e.name==='NotAllowedError'?'Mic permission denied':e.message)); }
+}
+
+function stopVoice(){
+  if(micRec?.state!=='inactive')micRec.stop();
+  micStream?.getTracks().forEach(t=>t.stop()); micStream=null;
+  audioCtx?.close().catch(()=>{}); audioCtx=null;
+  micOn=false; clearInterval(micTI); micBtnUI(false);
+  showToast(`⏹ Stopped (${fmt(micSec)}) — uploading...`);
+}
+function micBtnUI(r){
+  const b=document.getElementById('micBtn'),l=document.getElementById('micLbl'),t=document.getElementById('micTmr');
+  if(b) r?b.classList.add('rec'):b.classList.remove('rec');
+  if(l)l.textContent=r?'Stop':'Voice'; if(!r&&t)t.textContent='00:00';
+}
+
+function animWave(){
+  if(!analyser)return;
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  function draw(){waveAF=requestAnimationFrame(draw);analyser.getByteFrequencyData(buf);for(let i=0;i<28;i++){const b=document.getElementById(`wb${i}`);if(b)b.style.height=Math.max(4,(buf[Math.floor(i*buf.length/28)]||0)/255*32)+'px';}}
+  draw();
+}
+function stopWave(){if(waveAF)cancelAnimationFrame(waveAF);for(let i=0;i<28;i++){const b=document.getElementById(`wb${i}`);if(b)b.style.height='4px';}}
+
+// ════════════════════════════════════════════════════════════
+//  CLOUDINARY UPLOAD
+// ════════════════════════════════════════════════════════════
+async function uploadToCloudinary(blob, name, type){
+  if(!CLOUD||!PRESET){ showToast('⚙️ Setup Cloudinary first — tap ⚙ Setup'); return null; }
+  showProg(true,0);
+  const fd=new FormData();
+  fd.append('file',blob,name);
+  fd.append('upload_preset',PRESET);
+  fd.append('folder','shesecure_evidence');
+  // FIX: Use /video/upload endpoint for both video and audio — Cloudinary handles both
+  const url=`https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`;
+  return new Promise(resolve=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',url);
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable) showProg(true,Math.round(e.loaded/e.total*100)); };
+    xhr.onload=()=>{
+      showProg(false);
+      try{
+        const d=JSON.parse(xhr.responseText);
+        if(d.secure_url) resolve(d.secure_url);
+        else { console.error('Cloudinary:',d.error?.message); resolve(null); }
+      }catch{ resolve(null); }
+    };
+    xhr.onerror=xhr.ontimeout=()=>{ showProg(false); resolve(null); };
+    xhr.timeout=120000; xhr.send(fd);
+  });
+}
+function showProg(show,pct=0){
+  const w=document.getElementById('upWrap'),b=document.getElementById('upBar');
+  if(w)w.style.display=show?'block':'none'; if(b)b.style.width=(pct||0)+'%';
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAVE TO MONGODB
+// ════════════════════════════════════════════════════════════
+async function saveToMongo(url, type, sizeBytes){
+  const lat=mkr.getLatLng().lat.toFixed(5);
+  const lng=mkr.getLatLng().lng.toFixed(5);
+  try{
+    const r=await fetch(`${API}/evidence`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ url, type, latitude:lat, longitude:lng, size_kb:Math.round(sizeBytes/1024) })
+    });
+    const d=await r.json();
+    console.log(' Saved to MongoDB:', d.id);
+    return d.id;
+  }catch(e){
+    console.error('MongoDB save failed:',e.message);
+    showToast(' Backend offline — evidence not saved to DB');
+    return null;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ SOS — fetches ALL evidence from MongoDB and sends to WhatsApp ★
+// ════════════════════════════════════════════════════════════
+async function triggerSOS(){
+  const lat=mkr.getLatLng().lat.toFixed(5), lng=mkr.getLatLng().lng.toFixed(5);
+  document.getElementById('sosOv').classList.remove('hidden');
+  document.getElementById('sosMsg').textContent='Fetching evidence from MongoDB...';
+  document.getElementById('sosDetail').textContent='';
+  await buildAndSendSOS(lat, lng, true);
+}
+
+async function triggerSOSWithEvidence(){
+  const lat=mkr.getLatLng().lat.toFixed(5), lng=mkr.getLatLng().lng.toFixed(5);
+  document.getElementById('sosOv').classList.remove('hidden');
+  document.getElementById('sosMsg').textContent='Fetching evidence from MongoDB...';
+  document.getElementById('sosDetail').textContent='';
+  await buildAndSendSOS(lat, lng, true);
+}
+
+async function sendEvidenceOnly(){
+  const lat=mkr.getLatLng().lat.toFixed(5), lng=mkr.getLatLng().lng.toFixed(5);
+  await buildAndSendSOS(lat, lng, false);
+}
+
+async function buildAndSendSOS(lat, lng, isSOS){
+  // FIX: Use hours=720 (30 days) so ALL evidence is included, not just last 24h
+  let pkg = null;
+  try{
+    const r = await fetch(`${API}/sos-package?lat=${lat}&lng=${lng}&hours=720`);
+    pkg = await r.json();
+  }catch(e){
+    console.warn('Backend offline, using fallback');
+  }
+
+  // FIX: Fallback contacts from localStorage if backend is offline
+  const contacts  = pkg?.contacts  || JSON.parse(lsGet('ss_contacts','[]'));
+  const evidence  = pkg?.evidence  || [];
+  const mapsLink  = pkg?.location?.maps_link || `https://maps.google.com/maps?q=${lat},${lng}`;
+  const timeIST   = pkg?.time_ist || new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+
+  // Build WhatsApp message with ALL evidence URLs
+  const evLines = [];
+  const videoEv = evidence.filter(e=>e.type==='video');
+  const audioEv = evidence.filter(e=>e.type==='audio');
+
+  videoEv.forEach((e,i)=>{
+    const t = e.recorded_at ? new Date(e.recorded_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
+    evLines.push(` *Video ${i+1}*${t?' ('+t+')':''} — tap to play:\n${e.url}`);
+  });
+  audioEv.forEach((e,i)=>{
+    const t = e.recorded_at ? new Date(e.recorded_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
+    evLines.push(` *Audio ${i+1}*${t?' ('+t+')':''} — tap to play:\n${e.url}`);
+  });
+
+  const hasEvidence = evLines.length > 0;
+
+  let msgLines;
+  if(isSOS){
+    msgLines = [
+      ` *SheSecure — ${hasEvidence?'EMERGENCY SOS + EVIDENCE':'EMERGENCY SOS'}* 🚨`,
+      ``,
+      ` *My Location (tap to open in Maps):*`, mapsLink,
+      ``, ` *Time:* ${timeIST}`,
+    ];
+    if(hasEvidence){
+      msgLines.push(``, ` *Recorded Evidence (${evidence.length} files) — tap links to view:*`);
+      msgLines.push(...evLines);
+    } else {
+      msgLines.push(``, ` No evidence recorded yet. Please help me or call the police.`);
+    }
+    msgLines.push(``, `— SheSecure AI Safety App`);
+  } else {
+    msgLines = [
+      ` *SheSecure — Evidence Report*`,
+      ``, ` *Location:*`, mapsLink,
+      ``, ` *Time:* ${timeIST}`,
+      ``, `*Evidence Files (${evidence.length} total) — tap to view:*`,
+      ...evLines,
+      ``, `— SheSecure AI Safety App`
+    ];
+  }
+
+  const message = msgLines.join('\n');
+  const encoded = encodeURIComponent(message);
+
+  if(contacts.length){
+    // FIX: Send to up to 3 contacts with staggered timing
+    contacts.slice(0,3).forEach((c,i)=>{
+      let ph=(c.phone||'').replace(/\D/g,'');
+      if(ph.length===10) ph='91'+ph;
+      setTimeout(()=>window.open(`https://wa.me/${ph}?text=${encoded}`,'_blank'), i*1800);
+    });
+
+    const names=contacts.slice(0,3).map(c=>c.name).join(', ');
+    const detail=hasEvidence
+      ? `Sent ${videoEv.length} video(s) + ${audioEv.length} audio(s) to ${names}`
+      : `No evidence recorded yet. Location sent to ${names}`;
+    document.getElementById('sosMsg').textContent=isSOS?' SOS Sent!':' Evidence sent!';
+    document.getElementById('sosDetail').textContent=detail;
+    showToast(` Opening WhatsApp for ${contacts[0].name}...`);
+  } else {
+    // No contacts — open WhatsApp with manual recipient selection
+    window.open(`https://wa.me/?text=${encoded}`,'_blank');
+    document.getElementById('sosMsg').textContent=' WhatsApp opened';
+    document.getElementById('sosDetail').textContent='No Vault contacts — select recipient manually';
+    showToast('No Vault contacts — choose manually in WhatsApp');
+  }
+
+  if(isSOS){
+    fetch(`${API}/sos-event`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({latitude:lat,longitude:lng,sent_to:contacts.length,evidence_count:evidence.length,timestamp:new Date().toISOString()})
+    }).catch(()=>{});
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  EVIDENCE LIST
+// ════════════════════════════════════════════════════════════
+async function loadEvidence(){
+  const el=document.getElementById('evListFull'); if(!el) return;
+  try{
+    const docs=await(await fetch(`${API}/evidence`)).json();
+    if(!docs.length){ el.innerHTML='<p style="text-align:center;padding:18px;color:var(--muted)">No evidence recorded yet.</p>'; updateBadgesFromDocs([]); return; }
+    updateBadgesFromDocs(docs);
+    // FIX: Use data-id attribute instead of inline onclick with ID string
+    //      to avoid any quote escaping issues with UUIDs
+    el.innerHTML=docs.map(d=>{
+      const time=new Date(d.recorded_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      const icon=d.type==='video'?'📹':'🎙';
+      const shortUrl=(d.url||'').replace(/https?:\/\/res\.cloudinary\.com\/[^/]+\//,'').substring(0,38)+'...';
+      return `<div class="ev-item ${d.type}">
+        <div class="ev-icon">${icon}</div>
+        <div class="ev-info">
+          <div style="font-weight:600;color:var(--text)">${d.type==='video'?'Video':'Audio'} <span style="color:var(--muted);font-weight:400">${d.size_kb?d.size_kb+'KB':''}</span></div>
+          <div class="ev-time">${time}</div>
+          <a href="${d.url}" target="_blank" style="color:var(--blue);font-size:10px;text-decoration:none;word-break:break-all">${shortUrl}</a>
+        </div>
+        <button class="del-btn" data-evid="${d.id}" onclick="delEvidenceBtn(this)">🗑</button>
+      </div>`;
+    }).join('');
+  }catch{
+    el.innerHTML='<p style="text-align:center;padding:14px;color:var(--red)">Backend offline — start main.py</p>';
+  }
+}
+
+// FIX: Use button element reference to get ID, avoiding inline string in onclick
+function delEvidenceBtn(btn) {
+  const id = btn.getAttribute('data-evid');
+  delEvidence(id);
+}
+
+async function delEvidence(id){
+  if(!confirm('Delete this evidence?')) return;
+  try{
+    await fetch(`${API}/evidence/${id}`,{method:'DELETE'});
+    loadEvidence(); showToast('Deleted.');
+  }catch{ showToast('Backend offline.'); }
+}
+
+function updateBadgesFromDocs(docs){
+  const vCount=docs.filter(d=>d.type==='video').length;
+  const aCount=docs.filter(d=>d.type==='audio').length;
+  const vb=document.getElementById('vidBadge'),ab=document.getElementById('audBadge');
+  const vc=document.getElementById('vidCount'),ac=document.getElementById('audCount');
+  if(vc)vc.textContent=vCount; if(ac)ac.textContent=aCount;
+  if(vb) vb.className='ev-badge'+(vCount>0?' has':'');
+  if(ab) ab.className='ev-badge'+(aCount>0?' has':'');
+}
+
+// ════════════════════════════════════════════════════════════
+//  AI CHAT
+// ════════════════════════════════════════════════════════════
+const RULES=[
+  [/\b(sos|help me|emergency|danger|unsafe|scared|following|attack)\b/i,'SOS'],
+  [/\b(fake.?call|pretend.?call)\b/i,'FAKE'],
+  [/\b(share.?loc|send.?loc|my.?location)\b/i,'LOC'],
+  [/\b(record|start.?rec)\b/i,'REC'],
+];
+const TIPS=[
+  "Stay aware of your surroundings. Trust your instincts.",
+  "If you feel unsafe, move toward a crowded, well-lit area.",
+  "Keep your phone charged and share your journey with a trusted contact.",
+  "Say 'SOS', 'fake call', or 'share location' anytime."
+];
+
+async function askAI(){
+  const inp=document.getElementById('aiQ'); if(!inp) return;
+  const msg=inp.value.trim(); if(!msg) return;
+  addBubble(msg,'user'); inp.value='';
+  for(const [re,act] of RULES){
+    if(re.test(msg)){
+      if(act==='SOS'){addBubble(' SOS triggered!','ai',true);triggerSOS();}
+      else if(act==='FAKE'){addBubble(' Fake call in 3s…','ai');setTimeout(startFakeCall,3000);}
+      else if(act==='LOC'){addBubble(' Sharing your location.','ai');shareLocation();}
+      else if(act==='REC'){addBubble(' Starting recording…','ai');startCamera();}
+      return;
+    }
+  }
+  try{
+    const r=await fetch(`${API}/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg}),signal:AbortSignal.timeout(4000)});
+    const d=await r.json();
+    if(d.action==='send_alert'){addBubble(' SOS!','ai',true);triggerSOS();}
+    else if(d.action==='fake_call'){addBubble(' Fake call in 3s…','ai');setTimeout(startFakeCall,3000);}
+    else if(d.action==='share_location'){addBubble(' Sharing location.','ai');shareLocation();}
+    else addBubble(d.reply||TIPS[Math.floor(Math.random()*TIPS.length)],'ai');
+  }catch{
+    addBubble(TIPS[Math.floor(Math.random()*TIPS.length)],'ai');
+  }
+}
+function addBubble(t,r,alert=false){const l=document.getElementById('aiLog');if(!l)return;const d=document.createElement('div');d.className=`bubble ${r}${alert?' alert':''}`;d.textContent=t;l.appendChild(d);l.scrollTop=l.scrollHeight;}
+
+// ════════════════════════════════════════════════════════════
+//  CONTACTS
+// ════════════════════════════════════════════════════════════
+async function renderContacts(){
+  const list=document.getElementById('contactsList'); if(!list) return;
+  list.innerHTML='<p style="text-align:center;padding:16px;color:var(--muted)">Loading...</p>';
+  try{
+    const data=await(await fetch(`${API}/contacts`)).json();
+    if(!data.length){list.innerHTML='<p style="text-align:center;padding:16px;color:var(--muted)">Vault empty.<br>Add a contact below.</p>';return;}
+    // FIX: Use data-cid attribute instead of inline onclick to avoid quote issues
+    list.innerHTML=data.map(c=>`
+      <div style="display:flex;align-items:center;gap:11px;padding:11px;background:var(--surface);border-radius:12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="width:40px;height:40px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${escHtml(c.name)}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:monospace">${escHtml(c.phone)}</div>
+          ${c.relation?`<div style="font-size:10px;color:var(--muted)">${escHtml(c.relation)}</div>`:''}
+        </div>
+        <button data-cid="${c.id}" onclick="delContactBtn(this)" style="background:rgba(255,60,100,.1);border:1px solid rgba(255,60,100,.2);color:#ff3c64;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:12px">✕</button>
+      </div>`).join('');
+  }catch{
+    const data=JSON.parse(lsGet('ss_contacts','[]'));
+    if(!data.length){list.innerHTML='<p style="text-align:center;padding:16px;color:var(--muted)">Backend offline.<br>Contacts stored locally.</p>';return;}
+    list.innerHTML=data.map((c,i)=>`
+      <div style="display:flex;align-items:center;gap:11px;padding:11px;background:var(--surface);border-radius:12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="width:40px;height:40px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${escHtml(c.name)}</div><div style="font-size:11px;color:var(--muted);font-family:monospace">${escHtml(c.phone)}</div></div>
+        <button data-idx="${i}" onclick="delLocalContactBtn(this)" style="background:rgba(255,60,100,.1);border:1px solid rgba(255,60,100,.2);color:#ff3c64;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:12px">✕</button>
+      </div>`).join('');
+  }
+}
+
+// FIX: Helper to prevent XSS from contact names with special chars
+function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function delContactBtn(btn){ delContact(btn.getAttribute('data-cid')); }
+function delLocalContactBtn(btn){ delLocalContact(+btn.getAttribute('data-idx')); }
+
+async function saveContact(){
+  const name=document.getElementById('cName')?.value.trim();
+  const phone=document.getElementById('cPhone')?.value.trim();
+  const rel=document.getElementById('cRelation')?.value.trim()||'Trusted Contact';
+  if(!name||!phone){showToast('Enter name and phone.');return;}
+  if(!/^\d{10,15}$/.test(phone.replace(/[\s-]/g,''))){showToast('Invalid phone (10-15 digits).');return;}
+  try{
+    await fetch(`${API}/contacts`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,relation:rel})});
+    showToast(` ${name} saved to MongoDB!`);
+  }catch{
+    const arr=JSON.parse(lsGet('ss_contacts','[]'));
+    arr.push({name,phone,relation:rel}); lsSet('ss_contacts',JSON.stringify(arr));
+    showToast(` ${name} saved locally (backend offline)`);
+  }
+  document.getElementById('cName').value=''; document.getElementById('cPhone').value=''; document.getElementById('cRelation').value='';
+  renderContacts();
+}
+
+async function delContact(id){
+  if(!confirm('Remove?')) return;
+  try{await fetch(`${API}/contacts/${id}`,{method:'DELETE'});renderContacts();showToast('Removed.');}
+  catch{showToast('Backend offline.');}
+}
+function delLocalContact(i){if(!confirm('Remove?'))return;const a=JSON.parse(lsGet('ss_contacts','[]'));a.splice(i,1);lsSet('ss_contacts',JSON.stringify(a));renderContacts();showToast('Removed.');}
+
+// ════════════════════════════════════════════════════════════
+//  QUICK ACTIONS
+// ════════════════════════════════════════════════════════════
+function shareLocation(){
+  const lat=mkr.getLatLng().lat.toFixed(5),lng=mkr.getLatLng().lng.toFixed(5);
+  const url=`https://maps.google.com/maps?q=${lat},${lng}`;
+  navigator.share?navigator.share({title:'My Location',url}).catch(()=>{}):
+    navigator.clipboard.writeText(url).then(()=>showToast('📋 Copied!')).catch(()=>showToast(url));
+}
+function fakeCall(){showToast(' Fake call in 3s...');setTimeout(startFakeCall,3000);}
+function startFakeCall(){
+  const ov=document.createElement('div'); ov.id='fcOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(10,10,15,.97);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:Sora,sans-serif;';
+  ov.innerHTML=`<div style="width:80px;height:80px;border-radius:50%;background:rgba(77,159,255,.14);border:2px solid #4d9fff;display:flex;align-items:center;justify-content:center;font-size:36px;">👩</div>
+<div style="color:#fff;font-size:22px;font-weight:700;">Mom</div>
+<div style="color:rgba(240,240,248,.45);font-size:14px;" id="fcT">Incoming call… 00:00</div>
+<div style="display:flex;gap:30px;margin-top:20px;">
+  <button onclick="endFakeCall()" style="width:64px;height:64px;border-radius:50%;background:#ff3c64;border:none;cursor:pointer;font-size:26px;">📵</button>
+  <button onclick="endFakeCall()" style="width:64px;height:64px;border-radius:50%;background:#00e5a0;border:none;cursor:pointer;font-size:26px;">📞</button>
+</div>`;
+  document.body.appendChild(ov);
+  let s=0; window._fct=setInterval(()=>{s++;const e=document.getElementById('fcT');if(e)e.textContent=`On call… ${fmt(s)}`;},1000);
+}
+function endFakeCall(){clearInterval(window._fct);document.getElementById('fcOv')?.remove();}
+
+// ════════════════════════════════════════════════════════════
+//  JOURNEY & ROUTING
+// ════════════════════════════════════════════════════════════
+function openSearch(){
+  document.getElementById('searchModal')?.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('searchInp')?.focus(),150);
+}
+function closeSearch(){
+  document.getElementById('searchModal')?.classList.add('hidden');
+  const s=document.getElementById('searchInp'),r=document.getElementById('searchRes');
+  if(s)s.value='';if(r)r.innerHTML='';
+  _searchResults=[];
+}
+
+async function execSearch(){
+  const q=document.getElementById('searchInp')?.value.trim(); if(!q) return;
+  const rd=document.getElementById('searchRes'); if(rd) rd.innerHTML='<div class="sri" style="color:var(--muted)">Searching…</div>';
+  try{
+    const results=await(await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6`)).json();
+    if(!results.length){if(rd)rd.innerHTML='<div class="sri" style="color:var(--red)">No results.</div>';return;}
+    
+    // FIX: Store results in JS array, reference by index in onclick
+    //      This completely eliminates the SyntaxError from apostrophes in place names
+    _searchResults = results;
+    if(rd){
+      rd.innerHTML = results.map((r,i)=>{
+        const n=r.display_name.split(', ').slice(0,4).join(', ');
+        return `<div class="sri" onclick="pickResult(${i})">${escHtml(n)}</div>`;
+      }).join('');
+    }
+  }catch{if(rd)rd.innerHTML='<div class="sri" style="color:var(--red)">Failed.</div>';}
+}
+
+// FIX: Accept index, look up from _searchResults array
+function pickResult(idx){
+  const r = _searchResults[idx];
+  if(!r) return;
+  const name = r.display_name.split(', ').slice(0,4).join(', ');
+  setDest({lat:+r.lat,lng:+r.lon},name);
+  const e=document.getElementById('dest');if(e)e.value=name;
+  // FIX: Pan map to destination after selection
+  map.setView([+r.lat,+r.lon],14);
+  closeSearch();
+}
+
+function setDest(latlng,name){
+  destCoords=latlng; if(destMkr)map.removeLayer(destMkr);
+  destMkr=L.marker([latlng.lat,latlng.lng],{icon:L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:#4d9fff;border:3px solid #fff;box-shadow:0 0 12px rgba(77,159,255,.8)"></div>`})}).addTo(map);
+  destMkr.bindPopup(`<b>Destination:</b><br>${escHtml(name)}`).openPopup();
+  // FIX: Fit bounds to show both user and destination
+  if(pos[0]!==latlng.lat || pos[1]!==latlng.lng){
+    map.fitBounds([[pos[0],pos[1]],[latlng.lat,latlng.lng]],{padding:[60,60]});
+  }
+}
+
+function clearDest(){
+  if(destMkr){map.removeLayer(destMkr);destMkr=null;}
+  rLayers.forEach(l=>map.removeLayer(l));rLayers=[];routes=[];destCoords=null;
+  const e=document.getElementById('dest');if(e)e.value='';showToast('Cleared.');
+}
+
+async function findRoutes(){
+  if(!destCoords){showToast('Set a destination first.');return;}
+  showLoader('Calculating safe routes...');
+  rLayers.forEach(l=>map.removeLayer(l));rLayers=[];routes=[];
+  const[uLat,uLng]=pos,[dLat,dLng]=[destCoords.lat,destCoords.lng];
+  try{
+    // FIX: OSRM route fetch with proper error handling
+    const osrmUrl=`https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${dLng},${dLat}?overview=full&geometries=geojson&alternatives=true`;
+    const data=await(await fetch(osrmUrl)).json();
+    
+    if(data.code!=='Ok'||!data.routes?.length){
+      hideLoader();
+      showToast('No routes found — try a different destination.');
+      return;
+    }
+    
+    routes=data.routes.map(r=>({geometry:r.geometry,summary:{distance:r.distance,duration:r.duration}}));
+    
+    // FIX: Call backend AI route evaluation
+    let rEvals_raw = [];
+    try{
+      const aiRes=await fetch(`${API}/filter-routes`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({routes:data.routes.map((r,i)=>({index:i,distance:r.distance,time:r.duration}))})
+      });
+      const prediction=await aiRes.json();
+      rEvals_raw = prediction.evaluations || [];
+    }catch{
+      // Fallback if backend offline
+      const CATS=['Optimal','Moderate','Caution'],COLS=['#00e5a0','#ffb830','#ff3c64'],
+            TRNDS=['Well-lit main roads — AI recommended','Standard route','Less-travelled roads'];
+      rEvals_raw=data.routes.map((_,i)=>({index:i,score:Math.max(10,90-i*20),category:CATS[Math.min(i,2)],color:COLS[Math.min(i,2)],trend:TRNDS[Math.min(i,2)]}));
+    }
+    rEvals = rEvals_raw;
+    selR = rEvals.find(e=>e.score===Math.max(...rEvals.map(x=>x.score)))?.index || 0;
+
+    // Draw routes on map
+    routes.forEach((r,i)=>{
+      const coords=r.geometry.coordinates.map(c=>[c[1],c[0]]);
+      const ev=rEvals.find(e=>e.index===i)||{color:'#4d9fff'};
+      const isRec=i===selR;
+      rLayers.push(L.polyline(coords,{
+        color:isRec?ev.color:'rgba(255,255,255,.2)',
+        weight:isRec?6:3,
+        opacity:isRec?1:.4
+      }).addTo(map));
+    });
+    if(rLayers[selR])map.fitBounds(rLayers[selR].getBounds(),{padding:[50,50]});
+    
+    // Build route options UI
+    const ro=document.getElementById('routeOpts');
+    if(ro)ro.innerHTML=rEvals.map(ev=>{
+      const r=routes[ev.index];
+      const dist=(r.summary.distance/1000).toFixed(1);
+      const mins=Math.round(r.summary.duration/60);
+      const isR=ev.index===selR;
+      return `<div onclick="pickRoute(${ev.index})" id="ro${ev.index}" style="padding:13px;border-radius:12px;margin-bottom:9px;cursor:pointer;border:2px solid ${isR?ev.color:'var(--border)'};background:${isR?ev.color+'18':'var(--surface)'};transition:all .2s">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-weight:700;color:${ev.color}">${ev.category} Route ${ev.index+1}</span>
+          <span style="font-size:11px;background:${ev.color}22;color:${ev.color};padding:2px 9px;border-radius:20px">Score ${ev.score}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted)"> ${dist} km &nbsp;⏱ ${mins} min</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">🛡 ${ev.trend||''}</div>
+        ${isR?'<div style="font-size:11px;color:#00e5a0;margin-top:5px;font-weight:600">✓ AI Recommended</div>':''}
+      </div>`;
+    }).join('');
+    
+    hideLoader();
+    document.getElementById('routeModal')?.classList.remove('hidden');
+  }catch(e){
+    hideLoader();
+    showToast('Route fetch failed: '+e.message);
+    console.error(e);
+  }
+}
+
+function pickRoute(idx){
+  selR=idx;
+  rLayers.forEach((l,i)=>{
+    const ev=rEvals.find(e=>e.index===i)||{color:'#4d9fff'};
+    l.setStyle({color:i===idx?ev.color:'rgba(255,255,255,.2)',weight:i===idx?6:3,opacity:i===idx?1:.4});
+  });
+  // FIX: Fit map to selected route
+  if(rLayers[idx]) map.fitBounds(rLayers[idx].getBounds(),{padding:[50,50]});
+  document.querySelectorAll('[id^="ro"]').forEach(el=>{
+    const i=+el.id.slice(2);
+    const ev=rEvals.find(e=>e.index===i)||{color:'#4d9fff'};
+    el.style.border=i===idx?`2px solid ${ev.color}`:'2px solid var(--border)';
+    el.style.background=i===idx?`${ev.color}18`:'var(--surface)';
+  });
+}
+
+function startJourney(){
+  if(!routes.length||!destCoords){showToast('No route selected.');return;}
+  document.getElementById('routeModal')?.classList.add('hidden');
+  jActive=true;document.getElementById('jActive')?.classList.remove('hidden');
+  const btn=document.getElementById('jBtn');
+  if(btn){btn.innerHTML='⏹ End Journey';btn.onclick=endJourney;btn.className='btn btn-s';}
+  const el=document.getElementById('statDist');
+  if(el&&routes[selR])el.innerText=`${(routes[selR].summary.distance/1000).toFixed(1)} km`;
+  jStart=Date.now();
+  jTimer=setInterval(()=>{const e=document.getElementById('statTime');if(e)e.innerText=fmt(Math.floor((Date.now()-jStart)/1000));},1000);
+  showToast('🛡 Journey started — stay safe!');
+}
+
+function endJourney(){
+  jActive=false;clearInterval(jTimer);document.getElementById('jActive')?.classList.add('hidden');
+  const btn=document.getElementById('jBtn');
+  if(btn){btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>Find AI Safe Routes';btn.onclick=findRoutes;btn.className='btn btn-r';}
+  rLayers.forEach(l=>map.removeLayer(l));rLayers=[];
+  if(destMkr){map.removeLayer(destMkr);destMkr=null;}
+  routes=[];destCoords=null;
+  const e=document.getElementById('dest');if(e)e.value='';
+  showToast('Journey ended. Stay safe! 🛡');
+}
+
+// ════════════════════════════════════════════════════════════
+//  TABS & UTILS
+// ════════════════════════════════════════════════════════════
+function switchTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id)?.classList.remove('hidden');
+  if(btn)btn.classList.add('active');
+  if(id==='journey')setTimeout(()=>map.invalidateSize(),200);
+  if(id==='contacts')renderContacts();
+  if(id==='evidence')loadEvidence();
+}
+
+function setEv(cls,txt){
+  const el=document.getElementById('evSt'),tx=document.getElementById('evTxt');
+  if(el)el.className='ev-status'+(cls?' '+cls:'');
+  if(tx)tx.textContent=txt;
+}
+
+function bestMime(t){
+  const v=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+  const a=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'];
+  return(t==='video'?v:a).find(m=>MediaRecorder.isTypeSupported(m))||'';
+}
+function fmt(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
+function setTmr(id,s){const e=document.getElementById(id);if(e)e.textContent=fmt(s);}
+function showToast(msg,dur=3500){
+  const t=document.getElementById('toast');if(!t)return;
+  t.textContent=msg;t.style.display='block';
+  clearTimeout(t._to);t._to=setTimeout(()=>t.style.display='none',dur);
+}
+function showLoader(txt){
+  const e=document.getElementById('loaderTxt');if(e)e.innerText=txt||'Working...';
+  document.getElementById('loader')?.classList.remove('hidden');
+}
+function hideLoader(){document.getElementById('loader')?.classList.add('hidden');}
+</script>
+</body>
+</html>

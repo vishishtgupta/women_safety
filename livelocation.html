@@ -1,0 +1,62 @@
+<h2>Live Location</h2>
+<div>
+    <button onclick="startTracking()">Start Tracking</button>
+    <button onclick="stopTracking()">Stop Tracking</button>
+</div>
+<div id="locationStatus">Location not tracking</div>
+<div id="map" style="width: 100%; height: 300px; margin-top: 10px;"></div>
+
+<script>
+let watchId = null;
+
+function startTracking() {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+
+    watchId = navigator.geolocation.watchPosition(
+        async (position) => {
+            const { latitude, longitude } = position.coords;
+            document.getElementById("locationStatus").textContent =
+                `Latitude: ${latitude}, Longitude: ${longitude}`;
+
+            // Optional: Send location to backend
+            try {
+                await fetch("http://localhost:8000/save-location", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ latitude, longitude })
+                });
+            } catch (err) {
+                console.error("Failed to send location to backend", err);
+            }
+
+            // Optional: show location on a map
+            document.getElementById("map").innerHTML = `<iframe
+                width="100%" height="300"
+                frameborder="0" style="border:0"
+                src="https://www.google.com/maps?q=${latitude},${longitude}&hl=es;z=14&output=embed">
+            </iframe>`;
+        },
+        (err) => {
+            console.error(err);
+            alert("Error getting location: " + err.message);
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 5000
+        }
+    );
+}
+
+function stopTracking() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById("locationStatus").textContent = "Location tracking stopped";
+        document.getElementById("map").innerHTML = "";
+    }
+}
+</script>
